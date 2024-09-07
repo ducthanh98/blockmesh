@@ -59,7 +59,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 	lastLogin := time.Now()
 	var loginResponse request.LoginResponse
 
-	_, err := client.R().
+	res, err := client.R().
 		SetBody(authInfo).
 		SetResult(&loginResponse).
 		Post(constant.LoginURL)
@@ -69,6 +69,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 		go ping(proxyURL, authInfo)
 		return
 	}
+	logger.Info("Login successfully", zap.String("email", authInfo.Email), zap.Any("res", res))
 
 	var publicIp *request.GetIPResponse
 
