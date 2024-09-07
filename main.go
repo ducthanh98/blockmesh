@@ -70,6 +70,11 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 		return
 	}
 	logger.Info("Login successfully", zap.String("email", authInfo.Email), zap.Any("res", res))
+	if loginResponse.APIToken == "" {
+		time.Sleep(5 * time.Second)
+		go ping(proxyURL, authInfo)
+		return
+	}
 
 	var publicIp *request.GetIPResponse
 
