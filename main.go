@@ -55,16 +55,28 @@ func main() {
 
 func ping(proxyURL string, authInfo request.LoginRequest) {
 	rand.Seed(time.Now().UnixNano())
-	client := resty.New().SetProxy(proxyURL)
+	client := resty.New().R().
+		SetHeader("Accept", "*/*").
+		SetHeader("Accept-Language", "en-US,en;q=0.9").
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Origin", "https://app.blockmesh.xyz").
+		SetHeader("Priority", "u=1, i").
+		SetHeader("Referer", "https://app.blockmesh.xyz/").
+		SetHeader("Sec-CH-UA", `"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"`).
+		SetHeader("Sec-CH-UA-Mobile", "?0").
+		SetHeader("Sec-CH-UA-Platform", `"macOS"`).
+		SetHeader("Sec-Fetch-Dest", "empty").
+		SetHeader("Sec-Fetch-Mode", "cors").
+		SetHeader("Sec-Fetch-Site", "same-site").
+		SetHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
 	lastLogin := time.Now()
 	var loginResponse request.LoginResponse
-
-	res, err := client.R().
+	res, err := client.
 		SetBody(authInfo).
 		SetResult(&loginResponse).
 		Post(constant.LoginURL)
 	if err != nil {
-		logger.Error("Login error", zap.String("email", authInfo.Email))
+		logger.Error("Login error", zap.String("email", authInfo.Email), zap.Any("res", res))
 		time.Sleep(5 * time.Minute)
 		go ping(proxyURL, authInfo)
 		return
@@ -78,7 +90,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 
 	var publicIp *request.GetIPResponse
 
-	_, err = client.R().
+	_, err = client.
 		SetResult(&publicIp).
 		Get("https://api.ipify.org?format=json")
 	if err != nil {
@@ -86,7 +98,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 	}
 
 	var ipInformation request.IpInformation
-	_, err = client.R().
+	_, err = client.
 		SetResult(&ipInformation).
 		Get(fmt.Sprintf("https://ipinfo.io/%v/json", publicIp.IP))
 	if err != nil {
@@ -95,7 +107,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 
 	for {
 		if time.Now().Sub(lastLogin) > time.Hour {
-			_, err := client.R().
+			_, err := client.
 				SetBody(authInfo).
 				SetResult(&loginResponse).
 				Post(constant.LoginURL)
@@ -112,7 +124,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 			"api_token": loginResponse.APIToken,
 		}
 
-		res, err := client.R().
+		res, err := client.
 			SetBody(payload).
 			Post(constant.TaskURL)
 
@@ -158,7 +170,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 			"colo":           "NYC",
 		}
 
-		res, err = client.R().
+		res, err = client.
 			SetBody(payload).
 			Post(constant.BandwidthURL)
 
@@ -168,7 +180,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 		}
 		logger.Info("Submitting bandwidth request successfully", zap.String("email", authInfo.Email), zap.Any("res", res))
 
-		res, err = client.R().
+		res, err = client.
 			SetQueryParams(map[string]string{
 				"email":     authInfo.Email,
 				"api_token": loginResponse.APIToken,

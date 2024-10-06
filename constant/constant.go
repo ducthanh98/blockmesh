@@ -2,7 +2,7 @@ package constant
 
 import "fmt"
 
-const BaseUrl = "https://app.blockmesh.xyz/api"
+const BaseUrl = "https://api.blockmesh.xyz/api"
 const SpeedTestUrl = "https://api.speed.hetzner.de"
 
 var LoginURL = fmt.Sprintf("%v/get_token", BaseUrl)
