@@ -69,62 +69,50 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 		SetHeader("Sec-Fetch-Mode", "cors").
 		SetHeader("Sec-Fetch-Site", "same-site").
 		SetHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
-	lastLogin := time.Now()
-	var loginResponse request.LoginResponse
-	res, err := client.
-		SetBody(authInfo).
-		SetResult(&loginResponse).
-		Post(constant.LoginURL)
-	if err != nil {
-		logger.Error("Login error", zap.String("email", authInfo.Email), zap.Any("res", res))
-		time.Sleep(5 * time.Minute)
-		go ping(proxyURL, authInfo)
-		return
-	}
-	logger.Info("Login successfully", zap.String("email", authInfo.Email), zap.Any("res", res))
-	if loginResponse.APIToken == "" {
-		time.Sleep(5 * time.Second)
-		go ping(proxyURL, authInfo)
-		return
-	}
-
-	var publicIp *request.GetIPResponse
-
-	_, err = client.
-		SetResult(&publicIp).
-		Get("https://api.ipify.org?format=json")
-	if err != nil {
-		panic("Can't get public ip")
-	}
-
-	var ipInformation request.IpInformation
-	_, err = client.
-		SetResult(&ipInformation).
-		Get(fmt.Sprintf("https://ipinfo.io/%v/json", publicIp.IP))
-	if err != nil {
-		panic("Can't get ip information")
-	}
 
 	for {
-		if time.Now().Sub(lastLogin) > time.Hour {
-			_, err := client.
-				SetBody(authInfo).
-				SetResult(&loginResponse).
-				Post(constant.LoginURL)
-			if err != nil {
-				logger.Error("Login error", zap.String("email", authInfo.Email))
-				time.Sleep(5 * time.Minute)
-				go ping(proxyURL, authInfo)
-				return
-			}
-			lastLogin = time.Now()
+
+		var loginResponse request.LoginResponse
+		res, err := client.
+			SetBody(authInfo).
+			SetResult(&loginResponse).
+			Post(constant.LoginURL)
+		if err != nil {
+			logger.Error("Login error", zap.String("email", authInfo.Email), zap.Any("res", res))
+			time.Sleep(1 * time.Hour)
+			go ping(proxyURL, authInfo)
+			return
 		}
+		logger.Info("Login successfully", zap.String("email", authInfo.Email), zap.Any("res", res))
+		if loginResponse.APIToken == "" {
+			time.Sleep(1 * time.Hour)
+			go ping(proxyURL, authInfo)
+			return
+		}
+
+		var publicIp *request.GetIPResponse
+
+		_, err = client.
+			SetResult(&publicIp).
+			Get("https://api.ipify.org?format=json")
+		if err != nil {
+			panic("Can't get public ip")
+		}
+
+		var ipInformation request.IpInformation
+		_, err = client.
+			SetResult(&ipInformation).
+			Get(fmt.Sprintf("https://ipinfo.io/%v/json", publicIp.IP))
+		if err != nil {
+			panic("Can't get ip information")
+		}
+
 		payload := map[string]interface{}{
 			"email":     authInfo.Email,
 			"api_token": loginResponse.APIToken,
 		}
 
-		res, err := client.
+		res, err = client.
 			SetBody(payload).
 			Post(constant.TaskURL)
 
@@ -133,7 +121,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 			logger.Error("Error getting task request: ", zap.Error(err))
 		}
 		logger.Info("Getting task request successfully", zap.String("email", authInfo.Email), zap.Any("res", res))
-
+		time.Sleep(time.Second)
 		// Generate a random float between 12 and 14
 		min := 150.0
 		max := 180.0
@@ -193,6 +181,6 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 			logger.Error("Error making uptime request: ", zap.Error(err))
 		}
 		logger.Info("Making uptime request successfully", zap.String("email", authInfo.Email), zap.Any("res", res))
-		time.Sleep(30 * time.Second)
+		time.Sleep(8 * time.Hour)
 	}
 }
