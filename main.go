@@ -55,7 +55,7 @@ func main() {
 
 func ping(proxyURL string, authInfo request.LoginRequest) {
 	rand.Seed(time.Now().UnixNano())
-	client := resty.New().R().
+	client := resty.New().SetProxy(proxyURL).R().
 		SetHeader("Accept", "*/*").
 		SetHeader("Accept-Language", "en-US,en;q=0.9").
 		SetHeader("Content-Type", "application/json").
@@ -70,49 +70,49 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 		SetHeader("Sec-Fetch-Site", "same-site").
 		SetHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
 
+	var publicIp *request.GetIPResponse
+
+	_, err := client.
+		SetResult(&publicIp).
+		Get("https://api.ipify.org?format=json")
+	if err != nil {
+		panic("Can't get public ip")
+	}
+
+	var ipInformation request.IpInformation
+	_, err = client.
+		SetResult(&ipInformation).
+		Get(fmt.Sprintf("https://ipinfo.io/%v/json", publicIp.IP))
+	if err != nil {
+		panic("Can't get ip information")
+	}
+
 	for {
 
-		var loginResponse request.LoginResponse
-		res, err := client.
-			SetBody(authInfo).
-			SetResult(&loginResponse).
-			Post(constant.LoginURL)
-		if err != nil {
-			logger.Error("Login error", zap.String("email", authInfo.Email), zap.Any("res", res))
-			time.Sleep(1 * time.Hour)
-			go ping(proxyURL, authInfo)
-			return
-		}
-		logger.Info("Login successfully", zap.String("email", authInfo.Email), zap.Any("res", res))
-		if loginResponse.APIToken == "" {
-			time.Sleep(1 * time.Hour)
-			go ping(proxyURL, authInfo)
-			return
-		}
-
-		var publicIp *request.GetIPResponse
-
-		_, err = client.
-			SetResult(&publicIp).
-			Get("https://api.ipify.org?format=json")
-		if err != nil {
-			panic("Can't get public ip")
-		}
-
-		var ipInformation request.IpInformation
-		_, err = client.
-			SetResult(&ipInformation).
-			Get(fmt.Sprintf("https://ipinfo.io/%v/json", publicIp.IP))
-		if err != nil {
-			panic("Can't get ip information")
-		}
+		//var loginResponse request.LoginResponse
+		//res, err := client.
+		//	SetBody(authInfo).
+		//	SetResult(&loginResponse).
+		//	Post(constant.LoginURL)
+		//if err != nil {
+		//	logger.Error("Login error", zap.String("email", authInfo.Email), zap.Any("res", res))
+		//	time.Sleep(1 * time.Hour)
+		//	go ping(proxyURL, authInfo)
+		//	return
+		//}
+		//logger.Info("Login successfully", zap.String("email", authInfo.Email), zap.Any("res", res))
+		//if loginResponse.APIToken == "" {
+		//	time.Sleep(1 * time.Hour)
+		//	go ping(proxyURL, authInfo)
+		//	return
+		//}
 
 		payload := map[string]interface{}{
 			"email":     authInfo.Email,
-			"api_token": loginResponse.APIToken,
+			"api_token": authInfo.Password,
 		}
 
-		res, err = client.
+		res, err := client.
 			SetBody(payload).
 			Post(constant.TaskURL)
 
@@ -147,7 +147,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 		// Define the request payload
 		payload = map[string]interface{}{
 			"email":          authInfo.Email,
-			"api_token":      loginResponse.APIToken,
+			"api_token":      authInfo.Password,
 			"download_speed": downloadSpeed,
 			"upload_speed":   uploadSpeed,
 			"latency":        latency,
@@ -171,7 +171,7 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 		res, err = client.
 			SetQueryParams(map[string]string{
 				"email":     authInfo.Email,
-				"api_token": loginResponse.APIToken,
+				"api_token": authInfo.Password,
 				"ip":        publicIp.IP,
 			}).
 			Post(constant.UptimeURL)
@@ -181,6 +181,6 @@ func ping(proxyURL string, authInfo request.LoginRequest) {
 			logger.Error("Error making uptime request: ", zap.Error(err))
 		}
 		logger.Info("Making uptime request successfully", zap.String("email", authInfo.Email), zap.Any("res", res))
-		time.Sleep(8 * time.Hour)
+		time.Sleep(5 * time.Minute)
 	}
 }
