@@ -64,7 +64,23 @@ func main() {
 		// Ensure the browser is closed at the end
 		defer browser.MustClose()
 
-		page, _ := browser.Page(proto.TargetCreateTarget{URL: "https://app.blockmesh.xyz/ext/login"})
+		page := browser.MustPage("https://app.blockmesh.xyz/ext/login")
+
+		// Enable network events
+		_ = proto.NetworkEnable{}.Call(page)
+
+		// Log all responses
+		go page.EachEvent(func(e *proto.NetworkResponseReceived) {
+			fmt.Printf("Response Status: %d\n", e.Response.Status)
+			// Fetch and log the response body
+			body, err := proto.NetworkGetResponseBody{RequestID: e.RequestID}.Call(page)
+			if err != nil {
+				log.Printf("Failed to get response body for %s: %v\n", e.Response.URL, err)
+			} else {
+				fmt.Printf("Response Body: %s\n", body.Body)
+			}
+		})
+
 		// Find the iframe element by its CSS selector (e.g., using the iframe's name or ID)
 		page.MustElement("input").MustWaitLoad()
 
